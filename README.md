@@ -7,3 +7,13 @@ then
 ```
 git submodule update --init --recursive
 ```
+
+## Building application
+```
+zig build
+```
+
+## Running application
+```
+zig build run
+```
