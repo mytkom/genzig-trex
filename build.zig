@@ -24,13 +24,13 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
-    
+
     const raylib = raySdk.addRaylib(b, target, optimize, .{}) catch |err| {
-      std.debug.print("{any}\n", .{err});
-      return;
+        std.debug.print("{any}\n", .{err});
+        return;
     };
     exe.addIncludePath(.{ .path = "./src/raylib/src" });
-  	exe.linkLibrary(raylib);
+    exe.linkLibrary(raylib);
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
