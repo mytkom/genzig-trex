@@ -1,7 +1,7 @@
 ## Get Started
 First clone repository
 ```
-git@github.com:mytkom/genzig-trex.git
+git clone git@github.com:mytkom/genzig-trex.git
 ```
 then
 ```
