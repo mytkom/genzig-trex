@@ -23,6 +23,11 @@ pub const dinosaur = struct {
         self.ducking = true;
     }
 
+    fn process_frames(self: *dinosaur, frames_to_process: i32) void {
+        move_right(self, frames_to_process);
+        process_jump(self, frames_to_process);
+    }
+
     fn move_right(self: *dinosaur, frames_to_process: i32) void {
         self.position.x += frames_to_process * dino_speed;
     }
