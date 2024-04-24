@@ -15,19 +15,27 @@ const game_data = struct {
         return dt;
     }
 
+    pub fn process(game: *game_data) void {
+        var dt = game.update_game_time();
+        var frames_to_compute = @divFloor(dt, fp_ms);
+        game.dino.process_frames(frames_to_compute);
+    }
+
     //fn process_frames(frames_to_compute: u32) void {}
 };
 
-pub fn run_game() void {
+pub fn create_game() game_data {
     var game = game_data{
         .time_ms = 0,
         .dino = dino.create_dinosaur(),
         .start_time = zigTime.timestamp(),
     };
+    return game;
+}
 
-    while (true) {
-        var dt = game.update_game_time();
-        var frames_to_compute = @divFloor(dt, fp_ms);
-        dt -= frames_to_compute * fp_ms;
-    }
+pub fn process_game(game: game_data) void {
+    var dt = game.update_game_time();
+    var frames_to_compute = @divFloor(dt, fp_ms);
+    game.dino.process_frames(frames_to_compute);
+    //dt -= frames_to_compute * fp_ms;
 }

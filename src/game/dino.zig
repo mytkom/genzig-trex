@@ -4,8 +4,8 @@ const fp_ms = @import("game.zig").fp_ms;
 
 const jump_height = 100;
 const jump_time = 3 * 1000_000;
-const jump_dist_frame = jump_height * fp_ms / jump_time;
-const dino_speed = 1;
+const jump_dist_frame = @divFloor(jump_height * fp_ms, jump_time);
+const dino_speed = 0.1;
 
 const jump = struct { jump_start_time: i64, is_jumping: bool };
 
@@ -23,23 +23,23 @@ pub const dinosaur = struct {
         self.ducking = true;
     }
 
-    fn process_frames(self: *dinosaur, frames_to_process: i32) void {
+    pub fn process_frames(self: *dinosaur, frames_to_process: i64) void {
         move_right(self, frames_to_process);
         process_jump(self, frames_to_process);
     }
 
-    fn move_right(self: *dinosaur, frames_to_process: i32) void {
+    fn move_right(self: *dinosaur, frames_to_process: i64) void {
         self.position.x += frames_to_process * dino_speed;
     }
-    fn move_up(self: *dinosaur, frames_to_process: i32) void {
+    fn move_up(self: *dinosaur, frames_to_process: i64) void {
         self.position.y += frames_to_process * jump_dist_frame;
     }
 
-    fn move_down(self: *dinosaur, frames_to_process: i32) void {
+    fn move_down(self: *dinosaur, frames_to_process: i64) void {
         self.position.y -= frames_to_process * jump_dist_frame;
     }
 
-    fn process_jump(self: *dinosaur, frames_to_process: i32) void {
+    fn process_jump(self: *dinosaur, frames_to_process: i64) void {
         if (self.jump.is_jumping == false) return;
 
         var current_jump_time = zigTime.timestamp() - self.jump.jump_start_time;
