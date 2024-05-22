@@ -13,37 +13,64 @@ pub fn main() !void {
     var UIConfig = gameUI.GameUIConfig{
         .width = initWindowWidth,
         .height = initWindowHeight,
+        .dinoStep = 0.75 * initWindowWidth,
+        .dinoJumpHeight = 70,
+        .dinoJumpTime = 0.6,
+        .groundY = 2 * initWindowHeight / 3,
+        .animationDeltaTime = 0.25,
         .scaleFactor = initWindowWidth / desiredGameWidth,
-        .dinoPosition = .{ .x = initWindowWidth / 12, .y = initWindowHeight / 2 },
         .sprite = raylib.LoadTexture("resources/sprite.png"),
         .dino = .{
-            .standing = .{ .x = 848, .y = 2, .width = 43, .height = 46 },
-            .dead = .{ .x = 1068, .y = 2, .width = 45, .height = 50 },
-            .leftStep = .{ .x = 936, .y = 2, .width = 45, .height = 50 },
-            .rightStep = .{ .x = 980, .y = 2, .width = 45, .height = 50 },
+            .standing = .{ .x = 848, .y = 2, .width = 44, .height = 46 },
+            .dead = .{ .x = 1068, .y = 2, .width = 44, .height = 46 },
+            .leftStep = .{ .x = 936, .y = 2, .width = 44, .height = 46 },
+            .rightStep = .{ .x = 980, .y = 2, .width = 44, .height = 46 },
             .crouchLeftStep = .{ .x = 1112, .y = 20, .width = 58, .height = 28 },
             .crouchRightStep = .{ .x = 1170, .y = 20, .width = 58, .height = 28 },
-            .menuIcon = .{ .x = 40, .y = 4, .width = 43, .height = 46 },
+            .menuIcon = .{ .x = 40, .y = 4, .width = 44, .height = 46 },
+        },
+        .cactus = .{
+            .shortSingle = .{ .x = 228, .y = 2, .width = 16, .height = 32 },
+            .shortDouble = .{ .x = 245, .y = 2, .width = 33, .height = 32 },
+            .shortTriple = .{ .x = 279, .y = 2, .width = 50, .height = 32 },
+            .highSingle = .{ .x = 332, .y = 2, .width = 24, .height = 48 },
+            .highDouble = .{ .x = 357, .y = 2, .width = 49, .height = 48 },
+            .highTriple = .{ .x = 407, .y = 2, .width = 74, .height = 48 },
+        },
+        .pterodactyl = .{
+            .wingsDown = .{ .x = 134, .y = 2, .width = 45, .height = 39 },
+            .wingsUp = .{ .x = 180, .y = 2, .width = 45, .height = 39 },
         },
         .groundTexture = .{ .x = 2, .y = 52, .width = 1200, .height = 14 },
     };
 
     var state = gameUI.GameState.startScreen;
-    var obstacles = [1]gameUI.Obstacle{
+    var obstacles = [3]gameUI.Obstacle{
         gameUI.Obstacle{
-            .rect = .{ .x = 800, .y = UIConfig.dinoPosition.y, .width = 100, .height = 100 },
-            .type = gameUI.ObstacleType.Cactus,
+            .pos = .{ .x = initWindowWidth, .y = 0, .width = UIConfig.cactus.shortSingle.width, .height = UIConfig.cactus.shortSingle.height },
+            .type = gameUI.ObstacleType.CactusShortSingle,
+        },
+        gameUI.Obstacle{
+            .pos = .{ .x = initWindowWidth + UIConfig.dinoStep, .y = 0, .width = UIConfig.cactus.shortSingle.width, .height = UIConfig.cactus.shortSingle.height },
+            .type = gameUI.ObstacleType.CactusShortSingle,
+        },
+        gameUI.Obstacle{
+            .pos = .{ .x = initWindowWidth + UIConfig.dinoStep * 2, .y = 0, .width = UIConfig.cactus.shortSingle.width, .height = UIConfig.cactus.shortSingle.height },
+            .type = gameUI.ObstacleType.CactusShortSingle,
         },
     };
-    var lines = [2]raylib.Vector2{
-        .{ .x = 0, .y = UIConfig.dinoPosition.y + (UIConfig.dino.standing.height - UIConfig.groundTexture.height) * UIConfig.scaleFactor },
-        .{ .x = UIConfig.groundTexture.width * UIConfig.scaleFactor, .y = UIConfig.dinoPosition.y + (UIConfig.dino.standing.height - UIConfig.groundTexture.height) * UIConfig.scaleFactor },
+    var lines = [2]raylib.Rectangle{
+        .{ .x = 0, .y = 0, .width = UIConfig.groundTexture.width, .height = UIConfig.groundTexture.height },
+        .{ .x = UIConfig.groundTexture.width * UIConfig.scaleFactor, .y = 0, .width = UIConfig.groundTexture.width, .height = UIConfig.groundTexture.height },
     };
     var scene = gameUI.Scene{
         .ground = gameUI.Ground{
             .lines = &lines,
         },
         .obstacles = &obstacles,
+        .dino = gameUI.Dino{
+            .pos = .{ .x = initWindowWidth / 12, .y = 0, .width = UIConfig.dino.standing.width, .height = UIConfig.dino.standing.height },
+        },
     };
 
     while (!raylib.WindowShouldClose()) {
@@ -51,8 +78,7 @@ pub fn main() !void {
 
         raylib.BeginDrawing();
         raylib.ClearBackground(raylib.WHITE);
-        gameUI.UpdateScene(&scene, &UIConfig, deltaTime);
-        gameUI.DrawUI(&state, &UIConfig, &scene);
+        gameUI.DrawUI(&state, &UIConfig, &scene, deltaTime);
 
         raylib.EndDrawing();
     }
