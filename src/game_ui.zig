@@ -21,6 +21,7 @@ pub fn DrawUI(allocator: *const std.mem.Allocator, state: *statics.GameState, sp
 
             if (raylib.IsKeyDown(raylib.KEY_SPACE)) {
                 state.* = statics.GameState.running;
+                scene.Init();
             }
         },
         statics.GameState.running => {
@@ -104,9 +105,13 @@ fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, sta
         );
     }
 
+    const dinoSprite = GetDinoSpriteRectangle(state);
+    scene.dino.pos.width = dinoSprite.width;
+    scene.dino.pos.height = dinoSprite.height;
+
     DrawTexture(
         sprite,
-        GetDinoSpriteRectangle(state),
+        dinoSprite,
         scene.dino.pos,
         scaleFactor,
     );
@@ -122,7 +127,7 @@ fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, sta
         @as([*:0]const u8, text),
         @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
         @intFromFloat(statics.desiredHeight * scaleFactor * 0.1),
-        18,
+        25,
         raylib.BLACK,
     );
 }
@@ -145,6 +150,17 @@ fn DrawGameOver(scaleFactor: f32) void {
 }
 
 fn UpdateScene(deltaTime: f32) void {
+    if (raylib.IsKeyDown(raylib.KEY_DOWN)) {
+        scene.dino.isCrouching = true;
+    } else {
+        scene.dino.isCrouching = false;
+        if (raylib.IsKeyDown(raylib.KEY_SPACE) or raylib.IsKeyDown(raylib.KEY_UP)) {
+            scene.dino.wantToJump = true;
+        } else {
+            scene.dino.wantToJump = false;
+        }
+    }
+
     for (&scene.groundLines) |*line| {
         line.x -= statics.dinoVelocity * deltaTime;
     }
@@ -161,14 +177,10 @@ fn UpdateScene(deltaTime: f32) void {
         const newObstacleSprite: raylib.Rectangle = GetObstacleSpriteRectangle(newObstacleType);
         var newObstacleY: f32 = 0;
         if (newObstacleType == statics.ObstacleType.Pterodactyl) {
-            if (scene.rand.random().int(u32) % 2 == 0) {
-                newObstacleY = 0;
-            } else {
-                newObstacleY = 20;
-            }
+            newObstacleY = statics.pterodactylHeights[scene.rand.random().int(u32) % statics.pterodactylHeights.len];
         }
         scene.obstacles[2] = scene.Obstacle{
-            .pos = raylib.Rectangle{ .x = scene.obstacles[1].pos.x + statics.dinoVelocity, .y = 0, .width = newObstacleSprite.width, .height = newObstacleSprite.height },
+            .pos = raylib.Rectangle{ .x = scene.obstacles[1].pos.x + statics.dinoVelocity, .y = newObstacleY, .width = newObstacleSprite.width, .height = newObstacleSprite.height },
             .type = newObstacleType,
         };
     }
@@ -180,17 +192,22 @@ fn UpdateScene(deltaTime: f32) void {
     }
 
     // Jumping logic
-    if (raylib.IsKeyDown(raylib.KEY_SPACE) and scene.dino.velocityUp == 0) {
+    if (scene.dino.wantToJump and !scene.dino.isJumping) {
         scene.dino.velocityUp = std.math.sqrt(2 * statics.gravityForce * statics.dinoJumpHeight);
+        scene.dino.isJumping = true;
     }
 
     scene.dino.velocityUp -= statics.gravityForce * deltaTime;
+    if (scene.dino.isCrouching) {
+        scene.dino.velocityUp -= statics.gravityForce * deltaTime;
+    }
     scene.dino.pos.y += scene.dino.velocityUp * deltaTime;
 
     // End jump
     if (scene.dino.pos.y < 0) {
         scene.dino.pos.y = 0;
         scene.dino.velocityUp = 0;
+        scene.dino.isJumping = false;
     }
 
     scene.dino.points += deltaTime * 10.0;
@@ -229,10 +246,24 @@ fn GetObstacleSpriteRectangle(obstacleType: statics.ObstacleType) raylib.Rectang
 fn GetDinoSpriteRectangle(state: statics.GameState) raylib.Rectangle {
     if (state == statics.GameState.gameOver) {
         return statics.dino.dead;
-    } else if (animationBoolean) {
-        return statics.dino.leftStep;
+    } else if (scene.dino.isJumping) {
+        if (scene.dino.isCrouching) {
+            return statics.dino.crouchLeftStep;
+        } else {
+            return statics.dino.standing;
+        }
+    } else if (scene.dino.isCrouching) {
+        if (animationBoolean) {
+            return statics.dino.crouchLeftStep;
+        } else {
+            return statics.dino.crouchRightStep;
+        }
     } else {
-        return statics.dino.rightStep;
+        if (animationBoolean) {
+            return statics.dino.leftStep;
+        } else {
+            return statics.dino.rightStep;
+        }
     }
 }
 

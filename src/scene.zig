@@ -7,6 +7,9 @@ pub const Dino = struct {
     pos: raylib.Rectangle,
     velocityUp: f32,
     points: f32 = 0,
+    isCrouching: bool = false,
+    isJumping: bool = false,
+    wantToJump: bool = false,
 };
 
 pub const Obstacle = struct {
@@ -25,29 +28,12 @@ pub const Scene = struct {
 };
 
 pub var rand = rndGen.init(0);
-pub var obstacles = [3]Obstacle{
-    Obstacle{
-        .pos = .{ .x = statics.desiredWidth, .y = 0, .width = statics.cactus.shortSingle.width, .height = statics.cactus.shortSingle.height },
-        .type = statics.ObstacleType.CactusShortSingle,
-    },
-    Obstacle{
-        .pos = .{ .x = statics.desiredWidth + statics.dinoVelocity, .y = 0, .width = statics.cactus.shortSingle.width, .height = statics.cactus.shortSingle.height },
-        .type = statics.ObstacleType.CactusShortSingle,
-    },
-    Obstacle{
-        .pos = .{ .x = statics.desiredWidth + statics.dinoVelocity * 2, .y = 0, .width = statics.cactus.shortSingle.width, .height = statics.cactus.shortSingle.height },
-        .type = statics.ObstacleType.CactusShortSingle,
-    },
-};
-
-pub var groundLines = [2]raylib.Rectangle{
-    .{ .x = 0, .y = 0, .width = statics.groundTexture.width, .height = statics.groundTexture.height },
-    .{ .x = statics.groundTexture.width, .y = 0, .width = statics.groundTexture.width, .height = statics.groundTexture.height },
-};
-
-pub var dino = Dino{
+pub var obstacles: [3]Obstacle = undefined;
+pub var groundLines: [2]raylib.Rectangle = undefined;
+pub var dino: Dino = Dino{
     .pos = .{ .x = statics.desiredWidth / 12, .y = 0, .width = statics.dino.standing.width, .height = statics.dino.standing.height },
     .velocityUp = 0,
+    .points = 0,
 };
 
 pub fn Init() void {

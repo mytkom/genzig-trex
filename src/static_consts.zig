@@ -54,6 +54,7 @@ pub const pterodactyl: PterodactylTextures = .{
     .wingsDown = .{ .x = 134, .y = 2, .width = 45, .height = 39 },
     .wingsUp = .{ .x = 180, .y = 2, .width = 45, .height = 39 },
 };
+pub const pterodactylHeights: [3]f32 = .{ 0, 25, 50 };
 pub const groundTexture: raylib.Rectangle = .{ .x = 2, .y = 52, .width = 1200, .height = 14 };
 
 pub const ObstacleType = enum {
