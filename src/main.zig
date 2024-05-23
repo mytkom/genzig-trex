@@ -19,7 +19,7 @@ pub fn main() !void {
     defer std.debug.assert(gpa.deinit() == .ok);
 
     // DEBUG: Uncomment if you want to see collision rectangles
-    gameUI.drawColissionRectangles = true;
+    // gameUI.drawColissionRectangles = true;
 
     while (!raylib.WindowShouldClose()) {
         const deltaTime: f32 = raylib.GetFrameTime();
