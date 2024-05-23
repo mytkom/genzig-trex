@@ -5,8 +5,9 @@ const std = @import("std");
 
 var animationBoolean: bool = false;
 var animationDeltaTime: f32 = 0;
+pub var drawColissionRectangles: bool = false;
 
-pub fn DrawUI(state: *statics.GameState, sprite: *raylib.Texture2D, deltaTime: f32, scaleFactor: f32) void {
+pub fn DrawUI(allocator: *const std.mem.Allocator, state: *statics.GameState, sprite: *raylib.Texture2D, deltaTime: f32, scaleFactor: f32) !void {
     animationDeltaTime += deltaTime;
 
     if (animationDeltaTime >= statics.animationDeltaTime) {
@@ -24,13 +25,16 @@ pub fn DrawUI(state: *statics.GameState, sprite: *raylib.Texture2D, deltaTime: f
         },
         statics.GameState.running => {
             UpdateScene(deltaTime);
-            if (raylib.CheckCollisionRecs(scene.dino.pos, scene.obstacles[0].pos)) {
+            if (raylib.CheckCollisionRecs(
+                GetCollisionRec(scene.dino.pos, statics.collisionOffset),
+                GetCollisionRec(scene.obstacles[0].pos, statics.collisionOffset),
+            )) {
                 state.* = statics.GameState.gameOver;
             }
-            DrawScene(sprite, state.*, scaleFactor);
+            try DrawScene(allocator, sprite, state.*, scaleFactor);
         },
         statics.GameState.gameOver => {
-            DrawScene(sprite, state.*, scaleFactor);
+            try DrawScene(allocator, sprite, state.*, scaleFactor);
             DrawGameOver(scaleFactor);
 
             if (raylib.IsKeyDown(raylib.KEY_SPACE)) {
@@ -39,6 +43,15 @@ pub fn DrawUI(state: *statics.GameState, sprite: *raylib.Texture2D, deltaTime: f
             }
         },
     }
+}
+
+fn GetCollisionRec(rect: raylib.Rectangle, offset: f32) raylib.Rectangle {
+    return raylib.Rectangle{
+        .x = rect.x + offset,
+        .y = rect.y + offset,
+        .width = rect.width - 2 * offset,
+        .height = rect.height - 2 * offset,
+    };
 }
 
 fn DrawMenu(sprite: *raylib.Texture2D, scaleFactor: f32) void {
@@ -63,7 +76,7 @@ fn DrawMenu(sprite: *raylib.Texture2D, scaleFactor: f32) void {
     );
 }
 
-fn DrawScene(sprite: *raylib.Texture2D, state: statics.GameState, scaleFactor: f32) void {
+fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, state: statics.GameState, scaleFactor: f32) !void {
     for (scene.groundLines) |line| {
         const groundLineDestination = raylib.Rectangle{
             .x = line.x,
@@ -96,6 +109,21 @@ fn DrawScene(sprite: *raylib.Texture2D, state: statics.GameState, scaleFactor: f
         GetDinoSpriteRectangle(state),
         scene.dino.pos,
         scaleFactor,
+    );
+
+    var text = try std.fmt.allocPrintZ(
+        allocator.*,
+        "Points: {d}",
+        .{@as(u32, @intFromFloat(scene.dino.points))},
+    );
+    defer allocator.free(text);
+
+    raylib.DrawText(
+        @as([*:0]const u8, text),
+        @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
+        @intFromFloat(statics.desiredHeight * scaleFactor * 0.1),
+        18,
+        raylib.BLACK,
     );
 }
 
@@ -164,6 +192,8 @@ fn UpdateScene(deltaTime: f32) void {
         scene.dino.pos.y = 0;
         scene.dino.velocityUp = 0;
     }
+
+    scene.dino.points += deltaTime * 10.0;
 }
 
 fn GetObstacleSpriteRectangle(obstacleType: statics.ObstacleType) raylib.Rectangle {
@@ -223,6 +253,12 @@ fn DrawTexture(sprite: *raylib.Texture2D, spriteRect: raylib.Rectangle, destRect
         raylib.WHITE,
     );
 
-    // destinationGlobal.y -= destinationGlobal.height;
-    // raylib.DrawRectangleLinesEx(destinationGlobal, 4, raylib.RED);
+    if (drawColissionRectangles and destinationGlobal.width < statics.desiredWidth * scaleFactor) {
+        destinationGlobal.y -= destinationGlobal.height;
+        raylib.DrawRectangleLinesEx(
+            GetCollisionRec(destinationGlobal, statics.collisionOffset * scaleFactor),
+            4,
+            raylib.RED,
+        );
+    }
 }

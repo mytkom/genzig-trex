@@ -6,6 +6,7 @@ const rndGen = std.rand.DefaultPrng;
 pub const Dino = struct {
     pos: raylib.Rectangle,
     velocityUp: f32,
+    points: f32 = 0,
 };
 
 pub const Obstacle = struct {
@@ -51,6 +52,12 @@ pub var dino = Dino{
 
 pub fn Init() void {
     rand = rndGen.init(@as(u64, @intCast(std.time.timestamp())));
+
+    dino = Dino{
+        .pos = .{ .x = statics.desiredWidth / 12, .y = 0, .width = statics.dino.standing.width, .height = statics.dino.standing.height },
+        .velocityUp = 0,
+        .points = 0,
+    };
 
     obstacles = [3]Obstacle{
         Obstacle{

@@ -29,6 +29,7 @@ pub const desiredHeight: f32 = 400;
 pub const dinoVelocity: f32 = 450;
 pub const groundY: f32 = 300;
 pub const gravityForce: f32 = 1100;
+pub const collisionOffset: f32 = 4;
 pub const dinoJumpHeight: f32 = 70;
 pub const spriteFilepath = "resources/sprite.png";
 pub const animationDeltaTime: f32 = 0.25;
