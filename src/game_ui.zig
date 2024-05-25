@@ -116,7 +116,7 @@ fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, sta
         scaleFactor,
     );
 
-    var text = try std.fmt.allocPrintZ(
+    const text = try std.fmt.allocPrintZ(
         allocator.*,
         "Points: {d}",
         .{@as(u32, @intFromFloat(scene.dino.points))},
