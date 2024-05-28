@@ -5,8 +5,22 @@ const std = @import("std");
 const brn = @import("brain.zig");
 const GeneticBrain = brn.GeneticBrain;
 const InfluentialGameState = brn.InfluentialGameState;
+const gmp = @import("game_mode_parameters.zig");
 
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+    defer std.debug.assert(gpa.deinit() == .ok);
+
+    var stderr = std.io.getStdErr();
+
+    const game_mode_parameters = gmp.GameModeParameters.fromCommandLineArguments(gpa.allocator()) catch |err| {
+        _ = try stderr.writer().print("ERROR: {}", .{err});
+        _ = try gmp.usage(gpa.allocator());
+        return;
+    };
+    defer game_mode_parameters.deinit();
+
     const initWindowWidth: f32 = 1280;
     const initWindowHeight: f32 = 720;
     raylib.InitWindow(initWindowWidth, initWindowHeight, "Chrome dino game");
@@ -17,14 +31,8 @@ pub fn main() !void {
     var sprite = raylib.LoadTexture(statics.spriteFilepath);
     var state = statics.GameState.startScreen;
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
-    defer std.debug.assert(gpa.deinit() == .ok);
-
     // DEBUG: Uncomment if you want to see collision rectangles
     // gameUI.drawColissionRectangles = true;
-
-    var stderr = std.io.getStdErr();
 
     const brain = GeneticBrain.load("test.brain", gpa.allocator()) catch |err| {
         _ = try stderr.writer().print("An error occured while loading brain data: {}.\n", .{err});
