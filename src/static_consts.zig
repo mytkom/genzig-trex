@@ -33,6 +33,10 @@ pub const collisionOffset: f32 = 4;
 pub const dinoJumpHeight: f32 = 70;
 pub const spriteFilepath = "resources/sprite.png";
 pub const animationDeltaTime: f32 = 0.25;
+pub const dinoStandingWidth: f32 = 44;
+pub const dinoStandingHeight: f32 = 46;
+pub const dinoCrouchingWidth: f32 = 58;
+pub const dinoCrouchingHeight: f32 = 28;
 pub const dino: DinoTextures = .{
     .standing = .{ .x = 848, .y = 2, .width = 44, .height = 46 },
     .dead = .{ .x = 1068, .y = 2, .width = 44, .height = 46 },
@@ -72,3 +76,22 @@ pub const GameState = enum {
     running,
     gameOver,
 };
+
+pub fn getObstacleSpriteRectangle(obstacle_type: ObstacleType, animation_boolean: bool) raylib.Rectangle {
+    return switch (obstacle_type) {
+        ObstacleType.CactusShortSingle => cactus.shortSingle,
+        ObstacleType.CactusShortDouble => cactus.shortDouble,
+        ObstacleType.CactusShortTriple => cactus.shortTriple,
+        ObstacleType.CactusHighSingle => cactus.highSingle,
+        ObstacleType.CactusHighDouble => cactus.highDouble,
+        ObstacleType.CactusHighTriple => cactus.highTriple,
+        ObstacleType.Pterodactyl => if (animation_boolean) pterodactyl.wingsDown else pterodactyl.wingsUp,
+    };
+}
+
+pub fn getDinoSpriteRectangle(alive: bool, jumping: bool, crouching: bool, animation_boolean: bool) raylib.Rectangle {
+    if (!alive) return dino.dead;
+    if (jumping) return if (crouching) dino.crouchLeftStep else dino.standing;
+    if (crouching) return if (animation_boolean) dino.crouchLeftStep else dino.crouchRightStep;
+    return if (animation_boolean) dino.leftStep else dino.rightStep;
+}
