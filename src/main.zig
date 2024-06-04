@@ -36,6 +36,7 @@ pub fn main() !void {
             defer brain.deinit();
 
             // TODO: Run game
+            try runWatchMode(brain, gpa.allocator(), prng.random());
         },
         .train => |parameters| {
             const brain = GeneticBrain.generateRandom(prng.random(), gpa.allocator(), parameters.influential_cacti_count, parameters.influential_birds_count) catch |err| {
@@ -127,5 +128,110 @@ fn runPlayMode(allocator: std.mem.Allocator, rand: std.Random) !void {
                 key_down_released = true;
             }
         }
+    }
+}
+
+fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Texture2D, scaleFactor: f32, allocator: std.mem.Allocator, rand: std.Random) !void {
+    const jump_triggered = try allocator.alloc(bool, brains.len);
+    defer allocator.free(jump_triggered);
+    const duck_triggered = try allocator.alloc(bool, brains.len);
+    defer allocator.free(duck_triggered);
+    var scene = try Scene.init(allocator, 1, 3, rand);
+    defer scene.deinit();
+    const game_states = try allocator.alloc(InfluentialGameState, brains.len);
+    defer allocator.free(game_states);
+    for (game_states, brains) |*state, brain| {
+        state.* = try InfluentialGameState.init(allocator, brain.influential_cacti_count, brain.influential_birds_count);
+    }
+    defer for (game_states) |state| {
+        state.deinit();
+    };
+
+    var animationBoolean: bool = false;
+    var animationDeltaTime: f32 = 0;
+    var alive_ctr: u32 = 1;
+    while (!raylib.WindowShouldClose() and alive_ctr > 0) { // Scene update and render loop
+
+        // Update animation
+        const delta_time = raylib.GetFrameTime();
+        animationDeltaTime += delta_time;
+        while (animationDeltaTime >= statics.animationDeltaTime) {
+            animationBoolean = !animationBoolean;
+            animationDeltaTime -= statics.animationDeltaTime;
+        }
+
+        // Update influential game states
+        scene.updateInfluentialGameStates(game_states);
+
+        // Think
+        for (brains, game_states, jump_triggered, duck_triggered) |brain, *state, *jump, *duck| {
+            jump.* = brain.shouldJump(state);
+            duck.* = brain.shouldDuck(state);
+        }
+
+        // Update scene
+        alive_ctr = scene.update(delta_time, jump_triggered, duck_triggered);
+
+        // Render
+        raylib.BeginDrawing();
+        raylib.ClearBackground(raylib.WHITE);
+        gameUI.DrawScene(&scene, sprite, scaleFactor, animationBoolean);
+        raylib.EndDrawing();
+    }
+
+    for (scores, scene.scores) |*dst, src| {
+        dst.* = src;
+    }
+
+    // Game over screen
+    var key_down_released = !raylib.IsKeyDown(raylib.KEY_SPACE);
+    while (!raylib.WindowShouldClose()) {
+
+        // Update animation
+        animationDeltaTime += raylib.GetFrameTime();
+        while (animationDeltaTime >= statics.animationDeltaTime) {
+            animationBoolean = !animationBoolean;
+            animationDeltaTime -= statics.animationDeltaTime;
+        }
+
+        raylib.BeginDrawing();
+        raylib.ClearBackground(raylib.WHITE);
+        gameUI.DrawScene(&scene, sprite, scaleFactor, animationBoolean);
+        gameUI.DrawGameOver(scaleFactor);
+        raylib.EndDrawing();
+
+        if (raylib.IsKeyDown(raylib.KEY_SPACE)) {
+            if (key_down_released) break;
+        } else {
+            key_down_released = true;
+        }
+    }
+}
+
+fn runWatchMode(brain: GeneticBrain, allocator: std.mem.Allocator, rand: std.Random) !void {
+    const brains: [1]GeneticBrain = .{brain};
+    const scores = try allocator.alloc(f32, 1);
+    defer allocator.free(scores);
+
+    const initWindowWidth: f32 = 1280;
+    const initWindowHeight: f32 = 720;
+    raylib.InitWindow(initWindowWidth, initWindowHeight, "Chrome dino game");
+    defer raylib.CloseWindow();
+    raylib.SetTargetFPS(60);
+
+    const scaleFactor: f32 = @min(initWindowWidth / statics.desiredWidth, initWindowHeight / statics.desiredHeight);
+    var sprite = raylib.LoadTexture(statics.spriteFilepath);
+    gameUI.drawColissionRectangles = true;
+
+    // Start screen
+    while (!raylib.WindowShouldClose() and !raylib.IsKeyDown(raylib.KEY_SPACE)) {
+        raylib.BeginDrawing();
+        raylib.ClearBackground(raylib.WHITE);
+        gameUI.DrawMenu(&sprite, scaleFactor);
+        raylib.EndDrawing();
+    }
+
+    while (!raylib.WindowShouldClose()) { // Game loop
+        try watchGame(&brains, scores, &sprite, scaleFactor, allocator, rand);
     }
 }

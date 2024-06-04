@@ -191,6 +191,17 @@ pub const Scene = struct {
         self.allocator.free(self.scores);
         self.allocator.free(self.obstacles);
     }
+
+    pub fn updateInfluentialGameStates(self: *const Scene, game_states: []InfluentialGameState) void {
+        for (self.dinos, game_states) |dino, *state| {
+            state.dino_velocity_x = statics.dinoVelocity;
+            state.dino_velocity_y = dino.velocityUp;
+            state.cactus_width[0] = self.obstacles[0].pos.width;
+            state.cactus_height[0] = self.obstacles[0].pos.height;
+            state.cactus_offset_x[0] = self.obstacles[0].pos.x - dino.pos.x;
+            // TODO...
+        }
+    }
 };
 
 pub fn getCollisionRec(rect: raylib.Rectangle, offset: f32) raylib.Rectangle {
