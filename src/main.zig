@@ -244,6 +244,14 @@ fn runWatchMode(brain: GeneticBrain, allocator: std.mem.Allocator, rand: std.Ran
 fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.Random) !usize {
     const scores = try allocator.alloc(f32, brains.len);
     defer allocator.free(scores);
+    const scores_prefix_sums = try allocator.alloc(f32, brains.len + 1);
+    defer allocator.free(scores_prefix_sums);
+    const brains_buffer = try allocator.alloc(GeneticBrain, brains.len);
+    defer allocator.free(brains_buffer);
+    for (brains, brains_buffer) |brain, *buffer| {
+        buffer.* = try GeneticBrain.init(brain);
+    }
+    defer for (brains_buffer) |buffer| buffer.deinit();
 
     const initWindowWidth: f32 = 1280;
     const initWindowHeight: f32 = 720;
@@ -265,6 +273,23 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
 
     while (!raylib.WindowShouldClose()) { // Game loop
         try watchGame(brains, scores, &sprite, scaleFactor, allocator, rand);
+
+        // Select
+        scores_prefix_sums[0] = 0.0;
+        for (0..scores.len) |i| {
+            scores_prefix_sums[i + 1] = scores_prefix_sums[i] + scores[i];
+        }
+        for (brains_buffer) |buffer| {
+            const x = rand.float(f32) * scores_prefix_sums[scores.len];
+            var selected_index: usize = 0;
+            while (scores_prefix_sums[selected_index + 1] <= x) selected_index += 1;
+            buffer.copyFrom(&brains[selected_index]);
+        }
+        for (brains, brains_buffer) |brain, buffer| {
+            brain.copyFrom(&buffer);
+        }
+        // Crossover
+        // Mutate
     }
 
     var max_score: f32 = 0.0;

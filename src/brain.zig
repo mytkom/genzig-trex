@@ -52,6 +52,30 @@ pub const GeneticBrain = struct {
     jump_chromosome: []f32,
     duck_chromosome: []f32,
 
+    pub fn init(brain: GeneticBrain) !GeneticBrain {
+        const jump_chromosome = try brain.allocator.alloc(f32, brain.jump_chromosome.len);
+        errdefer brain.allocator.free(jump_chromosome);
+        const duck_chromosome = try brain.allocator.alloc(f32, brain.duck_chromosome.len);
+        errdefer brain.allocator.free(duck_chromosome);
+
+        return .{
+            .allocator = brain.allocator,
+            .influential_cacti_count = brain.influential_cacti_count,
+            .influential_birds_count = brain.influential_birds_count,
+            .jump_chromosome = jump_chromosome,
+            .duck_chromosome = duck_chromosome,
+        };
+    }
+
+    pub fn copyFrom(dst: *const GeneticBrain, src: *const GeneticBrain) void {
+        for (dst.jump_chromosome, src.jump_chromosome) |*gene, brain_gene| {
+            gene.* = brain_gene;
+        }
+        for (dst.duck_chromosome, src.duck_chromosome) |*gene, brain_gene| {
+            gene.* = brain_gene;
+        }
+    }
+
     pub fn load(filename: []const u8, allocator: Allocator) !GeneticBrain {
         var file = try std.fs.cwd().openFile(filename, .{});
         defer file.close();
