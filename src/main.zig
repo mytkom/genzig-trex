@@ -35,19 +35,24 @@ pub fn main() !void {
             };
             defer brain.deinit();
 
-            // TODO: Run game
             try runWatchMode(brain, gpa.allocator(), prng.random());
         },
         .train => |parameters| {
-            const brain = GeneticBrain.generateRandom(prng.random(), gpa.allocator(), parameters.influential_cacti_count, parameters.influential_birds_count) catch |err| {
-                _ = try stderr.writer().print("An error occured while generating random data: {}.\n", .{err});
-                return;
-            };
-            defer brain.deinit();
+            const allocator = gpa.allocator();
+            const brains = try allocator.alloc(GeneticBrain, parameters.population_size);
+            defer allocator.free(brains);
 
-            // TODO: Run evolution
+            for (brains) |*brain| {
+                brain.* = GeneticBrain.generateRandom(prng.random(), allocator, parameters.influential_cacti_count, parameters.influential_birds_count) catch |err| {
+                    _ = try stderr.writer().print("An error occured while generating random data: {}.\n", .{err});
+                    return;
+                };
+            }
+            defer for (brains) |brain| brain.deinit();
 
-            brain.save(parameters.save_filename) catch |err| {
+            const bestIndex = try runTrainMode(brains, allocator, prng.random());
+
+            brains[bestIndex].save(parameters.save_filename) catch |err| {
                 _ = try stderr.writer().print("Could not save data to file {s}: {}.\n", .{ parameters.save_filename, err });
                 return;
             };
@@ -136,7 +141,7 @@ fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Textur
     defer allocator.free(jump_triggered);
     const duck_triggered = try allocator.alloc(bool, brains.len);
     defer allocator.free(duck_triggered);
-    var scene = try Scene.init(allocator, 1, 3, rand);
+    var scene = try Scene.init(allocator, brains.len, 3, rand);
     defer scene.deinit();
     const game_states = try allocator.alloc(InfluentialGameState, brains.len);
     defer allocator.free(game_states);
@@ -234,4 +239,41 @@ fn runWatchMode(brain: GeneticBrain, allocator: std.mem.Allocator, rand: std.Ran
     while (!raylib.WindowShouldClose()) { // Game loop
         try watchGame(&brains, scores, &sprite, scaleFactor, allocator, rand);
     }
+}
+
+fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.Random) !usize {
+    const scores = try allocator.alloc(f32, brains.len);
+    defer allocator.free(scores);
+
+    const initWindowWidth: f32 = 1280;
+    const initWindowHeight: f32 = 720;
+    raylib.InitWindow(initWindowWidth, initWindowHeight, "Chrome dino game");
+    defer raylib.CloseWindow();
+    raylib.SetTargetFPS(60);
+
+    const scaleFactor: f32 = @min(initWindowWidth / statics.desiredWidth, initWindowHeight / statics.desiredHeight);
+    var sprite = raylib.LoadTexture(statics.spriteFilepath);
+    // gameUI.drawColissionRectangles = true;
+
+    // Start screen
+    while (!raylib.WindowShouldClose() and !raylib.IsKeyDown(raylib.KEY_SPACE)) {
+        raylib.BeginDrawing();
+        raylib.ClearBackground(raylib.WHITE);
+        gameUI.DrawMenu(&sprite, scaleFactor);
+        raylib.EndDrawing();
+    }
+
+    while (!raylib.WindowShouldClose()) { // Game loop
+        try watchGame(brains, scores, &sprite, scaleFactor, allocator, rand);
+    }
+
+    var max_score: f32 = 0.0;
+    var best_index: usize = 0;
+    for (scores, 0..) |score, i| {
+        if (score > max_score) {
+            max_score = score;
+            best_index = i;
+        }
+    }
+    return best_index;
 }

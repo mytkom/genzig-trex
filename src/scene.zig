@@ -32,7 +32,7 @@ pub const Scene = struct {
     scores: []f32,
     points: f32,
 
-    pub fn init(allocator: std.mem.Allocator, dino_count: u32, obstacle_count: u32, rand: std.Random) !Scene {
+    pub fn init(allocator: std.mem.Allocator, dino_count: usize, obstacle_count: usize, rand: std.Random) !Scene {
         const obstacles = try allocator.alloc(Obstacle, obstacle_count);
         errdefer allocator.free(obstacles);
         const dinos = try allocator.alloc(Dino, dino_count);
