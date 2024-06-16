@@ -288,8 +288,14 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
         for (brains, brains_buffer) |brain, buffer| {
             brain.copyFrom(&buffer);
         }
+
         // Crossover
+        var i: usize = 0;
+        while (i + 1 < brains.len) : (i += 2)
+            GeneticBrain.crossover(brains[i], brains[i + 1], rand);
+
         // Mutate
+        for (brains) |brain| brain.mutate(rand);
     }
 
     var max_score: f32 = 0.0;

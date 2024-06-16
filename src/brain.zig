@@ -181,4 +181,39 @@ pub const GeneticBrain = struct {
         self.allocator.free(self.jump_chromosome);
         self.allocator.free(self.duck_chromosome);
     }
+
+    pub fn crossover(a: GeneticBrain, b: GeneticBrain, random: Random) void {
+        const crossoverProbability = 0.5;
+        if (random.float(f32) >= crossoverProbability) return;
+
+        for (a.jump_chromosome, b.jump_chromosome) |*a_gene, *b_gene| {
+            if (random.float(f32) < 0.5) {
+                const tmp = a_gene.*;
+                a_gene.* = b_gene.*;
+                b_gene.* = tmp;
+            }
+        }
+
+        for (a.duck_chromosome, b.duck_chromosome) |*a_gene, *b_gene| {
+            if (random.float(f32) < 0.5) {
+                const tmp = a_gene.*;
+                a_gene.* = b_gene.*;
+                b_gene.* = tmp;
+            }
+        }
+    }
+
+    pub fn mutate(self: GeneticBrain, random: Random) void {
+        const mutationProbability = 0.05;
+        for (self.jump_chromosome) |*gene| {
+            if (random.float(f32) < mutationProbability) {
+                gene.* = 2 * random.float(f32) - 1;
+            }
+        }
+        for (self.duck_chromosome) |*gene| {
+            if (random.float(f32) < mutationProbability) {
+                gene.* = 2 * random.float(f32) - 1;
+            }
+        }
+    }
 };
