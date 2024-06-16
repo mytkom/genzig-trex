@@ -66,7 +66,7 @@ fn runPlayMode(allocator: std.mem.Allocator, rand: std.Random) !void {
 
     const scaleFactor: f32 = @min(initWindowWidth / statics.desiredWidth, initWindowHeight / statics.desiredHeight);
     var sprite = raylib.LoadTexture(statics.spriteFilepath);
-    gameUI.drawColissionRectangles = true;
+    // gameUI.drawColissionRectangles = true;
 
     // Start screen
     while (!raylib.WindowShouldClose() and !raylib.IsKeyDown(raylib.KEY_SPACE)) {
@@ -221,7 +221,7 @@ fn runWatchMode(brain: GeneticBrain, allocator: std.mem.Allocator, rand: std.Ran
 
     const scaleFactor: f32 = @min(initWindowWidth / statics.desiredWidth, initWindowHeight / statics.desiredHeight);
     var sprite = raylib.LoadTexture(statics.spriteFilepath);
-    gameUI.drawColissionRectangles = true;
+    // gameUI.drawColissionRectangles = true;
 
     // Start screen
     while (!raylib.WindowShouldClose() and !raylib.IsKeyDown(raylib.KEY_SPACE)) {

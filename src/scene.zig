@@ -196,10 +196,31 @@ pub const Scene = struct {
         for (self.dinos, game_states) |dino, *state| {
             state.dino_velocity_x = statics.dinoVelocity;
             state.dino_velocity_y = dino.velocityUp;
-            state.cactus_width[0] = self.obstacles[0].pos.width;
-            state.cactus_height[0] = self.obstacles[0].pos.height;
-            state.cactus_offset_x[0] = self.obstacles[0].pos.x - dino.pos.x;
-            // TODO...
+            var ci: u32 = 0;
+            var pi: u32 = 0;
+            for (self.obstacles) |obstacle| {
+                if (obstacle.type == statics.ObstacleType.Pterodactyl and pi < state.bird_offset_x.len) {
+                    state.bird_offset_x[pi] = obstacle.pos.x - dino.pos.x;
+                    state.bird_offset_y[pi] = obstacle.pos.y - dino.pos.y;
+                    pi += 1;
+                } else if (ci < state.cactus_offset_x.len) {
+                    state.cactus_offset_x[ci] = obstacle.pos.x - dino.pos.x;
+                    state.cactus_width[ci] = obstacle.pos.width;
+                    state.cactus_height[ci] = obstacle.pos.height;
+                    ci += 1;
+                }
+                while (pi < state.bird_offset_x.len) {
+                    state.bird_offset_x[pi] = 0.0;
+                    state.bird_offset_y[pi] = 0.0;
+                    pi += 1;
+                }
+                while (ci < state.cactus_offset_x.len) {
+                    state.cactus_offset_x[ci] = 0.0;
+                    state.cactus_width[ci] = 0.0;
+                    state.cactus_height[ci] = 0.0;
+                    ci += 1;
+                }
+            }
         }
     }
 };
