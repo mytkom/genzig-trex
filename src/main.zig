@@ -22,8 +22,7 @@ pub fn main() !void {
     };
     defer game_mode_parameters.deinit();
 
-    // const seed = @as(u64, @intCast(std.time.timestamp()));
-    const seed = 100;
+    const seed = @as(u64, @intCast(std.time.timestamp()));
     var prng = std.rand.DefaultPrng.init(seed);
 
     switch (game_mode_parameters) {
@@ -276,6 +275,14 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
         try watchGame(brains, scores, &sprite, scaleFactor, allocator, rand, generation % auto_iters == 0, generation);
 
         // Select
+        var elite_score: f32 = 0.0;
+        var elite_index: usize = 0;
+        for (scores, 0..) |score, i| {
+            if (score > elite_score) {
+                elite_score = score;
+                elite_index = i;
+            }
+        }
         scores_prefix_sums[0] = 0.0;
         for (0..scores.len) |i| {
             scores_prefix_sums[i + 1] = scores_prefix_sums[i] + scores[i];
@@ -283,20 +290,27 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
         for (brains_buffer) |buffer| {
             const x = rand.float(f32) * scores_prefix_sums[scores.len];
             var selected_index: usize = 0;
-            while (scores_prefix_sums[selected_index + 1] <= x) selected_index += 1;
+            while (selected_index < scores.len and scores_prefix_sums[selected_index + 1] <= x)
+                selected_index += 1;
             buffer.copyFrom(&brains[selected_index]);
         }
-        for (brains, brains_buffer) |brain, buffer| {
+        for (brains, brains_buffer, 0..) |brain, buffer, index| {
+            if (index == elite_index) continue;
             brain.copyFrom(&buffer);
         }
 
         // Crossover
-        var i: usize = 0;
-        while (i + 1 < brains.len) : (i += 2)
-            GeneticBrain.crossover(brains[i], brains[i + 1], rand);
+        var idx: usize = 0;
+        while (idx + 1 < brains.len) : (idx += 2) {
+            if (idx == elite_index or idx + 1 == elite_index) continue;
+            GeneticBrain.crossover(brains[idx], brains[idx + 1], rand);
+        }
 
         // Mutate
-        for (brains) |brain| brain.mutate(rand);
+        for (brains, 0..) |brain, index| {
+            if (index == elite_index) continue;
+            brain.mutate(rand);
+        }
 
         generation += 1;
     }

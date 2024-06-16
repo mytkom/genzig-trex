@@ -181,9 +181,9 @@ pub const Scene = struct {
                 dino.pos.height = statics.dinoStandingHeight;
             }
 
+            score.* = self.points;
             if (raylib.CheckCollisionRecs(getCollisionRec(dino.pos, statics.collisionOffset), getCollisionRec(self.obstacles[0].pos, statics.collisionOffset))) {
                 dino.alive = false;
-                score.* = self.points;
             } else {
                 alive_dino_count += 1;
             }
