@@ -14,7 +14,7 @@ pub fn usage(allocator: Allocator) !void {
         "\t -c[=2]  \tNumber of influential cacti\n" ++
         "\t -p[=1]  \tNumber of influential pterodactyls\n" ++
         "\t -s[=100]\tPopulation size\n" ++
-        "\t -g[=100]\tMaximal number of generations\n\n" ++
+        "\t -g[=100]\tNumber of automatically run generations\n\n" ++
         "AUTHORS: Piotr Kucharczyk | Borys Kurdek | Marek Mytkowski\n", .{ args[0], args[0], args[0] });
 }
 

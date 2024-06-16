@@ -115,7 +115,8 @@ pub const Scene = struct {
                 self.obstacles[index] = self.obstacles[index + 1];
             }
 
-            const new_obstacle_type: statics.ObstacleType = @enumFromInt(self.rand.int(u32) % @typeInfo(statics.ObstacleType).Enum.fields.len);
+            const is_cactus: bool = 3 * self.rand.float(f32) < 2; // 66%
+            const new_obstacle_type: statics.ObstacleType = if (is_cactus) @enumFromInt(self.rand.int(u32) % 6) else statics.ObstacleType.Pterodactyl;
             const new_obstacle_sprite: raylib.Rectangle = statics.getObstacleSpriteRectangle(new_obstacle_type, false);
             var new_obstacle_y: f32 = 0;
             if (new_obstacle_type == statics.ObstacleType.Pterodactyl) {
@@ -138,7 +139,12 @@ pub const Scene = struct {
         // Update dinos
         var alive_dino_count: u32 = 0;
         for (self.dinos, jump_triggered, duck_triggered, self.scores) |*dino, is_jump_triggered, is_duck_triggered, *score| {
-            if (!dino.alive) continue;
+            if (!dino.alive) {
+                if (dino.pos.x >= -dino.pos.width) {
+                    dino.pos.x -= statics.dinoVelocity * deltaTime;
+                }
+                continue;
+            }
 
             if (is_duck_triggered) {
                 dino.isCrouching = true;

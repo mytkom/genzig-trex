@@ -50,7 +50,7 @@ pub fn main() !void {
             }
             defer for (brains) |brain| brain.deinit();
 
-            const bestIndex = try runTrainMode(brains, allocator, prng.random());
+            const bestIndex = try runTrainMode(brains, allocator, prng.random(), parameters.max_generations);
 
             brains[bestIndex].save(parameters.save_filename) catch |err| {
                 _ = try stderr.writer().print("Could not save data to file {s}: {}.\n", .{ parameters.save_filename, err });
@@ -106,7 +106,7 @@ fn runPlayMode(allocator: std.mem.Allocator, rand: std.Random) !void {
             // Render
             raylib.BeginDrawing();
             raylib.ClearBackground(raylib.WHITE);
-            gameUI.DrawScene(&scene, &sprite, scaleFactor, animationBoolean);
+            gameUI.DrawScene(&scene, &sprite, scaleFactor, animationBoolean, null, 1);
             raylib.EndDrawing();
         }
 
@@ -123,7 +123,7 @@ fn runPlayMode(allocator: std.mem.Allocator, rand: std.Random) !void {
 
             raylib.BeginDrawing();
             raylib.ClearBackground(raylib.WHITE);
-            gameUI.DrawScene(&scene, &sprite, scaleFactor, animationBoolean);
+            gameUI.DrawScene(&scene, &sprite, scaleFactor, animationBoolean, null, 1);
             gameUI.DrawGameOver(scaleFactor);
             raylib.EndDrawing();
 
@@ -136,7 +136,7 @@ fn runPlayMode(allocator: std.mem.Allocator, rand: std.Random) !void {
     }
 }
 
-fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Texture2D, scaleFactor: f32, allocator: std.mem.Allocator, rand: std.Random) !void {
+fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Texture2D, scaleFactor: f32, allocator: std.mem.Allocator, rand: std.Random, wait_for_input: bool, generation: ?u32) !void {
     const jump_triggered = try allocator.alloc(bool, brains.len);
     defer allocator.free(jump_triggered);
     const duck_triggered = try allocator.alloc(bool, brains.len);
@@ -180,7 +180,7 @@ fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Textur
         // Render
         raylib.BeginDrawing();
         raylib.ClearBackground(raylib.WHITE);
-        gameUI.DrawScene(&scene, sprite, scaleFactor, animationBoolean);
+        gameUI.DrawScene(&scene, sprite, scaleFactor, animationBoolean, generation, alive_ctr);
         raylib.EndDrawing();
     }
 
@@ -190,7 +190,7 @@ fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Textur
 
     // Game over screen
     var key_down_released = !raylib.IsKeyDown(raylib.KEY_SPACE);
-    while (!raylib.WindowShouldClose()) {
+    while (wait_for_input and !raylib.WindowShouldClose()) {
 
         // Update animation
         animationDeltaTime += raylib.GetFrameTime();
@@ -201,7 +201,7 @@ fn watchGame(brains: []const GeneticBrain, scores: []f32, sprite: *raylib.Textur
 
         raylib.BeginDrawing();
         raylib.ClearBackground(raylib.WHITE);
-        gameUI.DrawScene(&scene, sprite, scaleFactor, animationBoolean);
+        gameUI.DrawScene(&scene, sprite, scaleFactor, animationBoolean, generation, alive_ctr);
         gameUI.DrawGameOver(scaleFactor);
         raylib.EndDrawing();
 
@@ -237,11 +237,11 @@ fn runWatchMode(brain: GeneticBrain, allocator: std.mem.Allocator, rand: std.Ran
     }
 
     while (!raylib.WindowShouldClose()) { // Game loop
-        try watchGame(&brains, scores, &sprite, scaleFactor, allocator, rand);
+        try watchGame(&brains, scores, &sprite, scaleFactor, allocator, rand, true, null);
     }
 }
 
-fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.Random) !usize {
+fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.Random, auto_iters: u32) !usize {
     const scores = try allocator.alloc(f32, brains.len);
     defer allocator.free(scores);
     const scores_prefix_sums = try allocator.alloc(f32, brains.len + 1);
@@ -252,6 +252,7 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
         buffer.* = try GeneticBrain.init(brain);
     }
     defer for (brains_buffer) |buffer| buffer.deinit();
+    var generation: u32 = 1;
 
     const initWindowWidth: f32 = 1280;
     const initWindowHeight: f32 = 720;
@@ -272,7 +273,7 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
     }
 
     while (!raylib.WindowShouldClose()) { // Game loop
-        try watchGame(brains, scores, &sprite, scaleFactor, allocator, rand);
+        try watchGame(brains, scores, &sprite, scaleFactor, allocator, rand, generation % auto_iters == 0, generation);
 
         // Select
         scores_prefix_sums[0] = 0.0;
@@ -296,6 +297,8 @@ fn runTrainMode(brains: []GeneticBrain, allocator: std.mem.Allocator, rand: std.
 
         // Mutate
         for (brains) |brain| brain.mutate(rand);
+
+        generation += 1;
     }
 
     var max_score: f32 = 0.0;

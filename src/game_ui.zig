@@ -28,8 +28,8 @@ pub fn DrawMenu(sprite: *raylib.Texture2D, scaleFactor: f32) void {
     );
 }
 
-pub fn DrawScene(scene: *const Scene, sprite: *raylib.Texture2D, scaleFactor: f32, animation_boolean: bool) void {
-    var buffer: [20]u8 = undefined;
+pub fn DrawScene(scene: *const Scene, sprite: *raylib.Texture2D, scaleFactor: f32, animation_boolean: bool, generation: ?u32, alive: u32) void {
+    var buffer: [100]u8 = undefined;
     var fba = std.heap.FixedBufferAllocator.init(&buffer);
     const allocator = fba.allocator();
 
@@ -61,6 +61,7 @@ pub fn DrawScene(scene: *const Scene, sprite: *raylib.Texture2D, scaleFactor: f3
     }
 
     for (scene.dinos) |dino| {
+        if (dino.pos.x < -dino.pos.width) continue;
         DrawTexture(
             sprite,
             statics.getDinoSpriteRectangle(dino.alive, dino.isJumping, dino.isCrouching, animation_boolean),
@@ -80,6 +81,38 @@ pub fn DrawScene(scene: *const Scene, sprite: *raylib.Texture2D, scaleFactor: f3
         @as([*:0]const u8, text),
         @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
         @intFromFloat(statics.desiredHeight * scaleFactor * 0.1),
+        25,
+        raylib.BLACK,
+    );
+
+    if (generation == null) return;
+
+    const generation_text = std.fmt.allocPrintZ(
+        allocator,
+        "Generation: {d}",
+        .{generation.?},
+    ) catch "Generation: ???";
+    defer allocator.free(text);
+
+    raylib.DrawText(
+        @as([*:0]const u8, generation_text),
+        @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
+        @intFromFloat(statics.desiredHeight * scaleFactor * 0.2),
+        25,
+        raylib.BLACK,
+    );
+
+    const alive_text = std.fmt.allocPrintZ(
+        allocator,
+        "Alive: {d}",
+        .{alive},
+    ) catch "Generation: ???";
+    defer allocator.free(text);
+
+    raylib.DrawText(
+        @as([*:0]const u8, alive_text),
+        @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
+        @intFromFloat(statics.desiredHeight * scaleFactor * 0.3),
         25,
         raylib.BLACK,
     );
