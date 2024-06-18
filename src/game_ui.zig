@@ -1,64 +1,15 @@
 const raylib = @cImport(@cInclude("raylib.h"));
 const statics = @import("static_consts.zig");
-const scene = @import("scene.zig");
+const scn = @import("scene.zig");
 const std = @import("std");
+const Scene = scn.Scene;
 
-var animationBoolean: bool = false;
-var animationDeltaTime: f32 = 0;
 pub var drawColissionRectangles: bool = false;
 
-pub fn DrawUI(allocator: *const std.mem.Allocator, state: *statics.GameState, sprite: *raylib.Texture2D, deltaTime: f32, scaleFactor: f32) !void {
-    animationDeltaTime += deltaTime;
-
-    if (animationDeltaTime >= statics.animationDeltaTime) {
-        animationBoolean = !animationBoolean;
-        animationDeltaTime = 0;
-    }
-
-    switch (state.*) {
-        statics.GameState.startScreen => {
-            DrawMenu(sprite, scaleFactor);
-
-            if (raylib.IsKeyDown(raylib.KEY_SPACE)) {
-                state.* = statics.GameState.running;
-                scene.Init();
-            }
-        },
-        statics.GameState.running => {
-            UpdateScene(deltaTime);
-            if (raylib.CheckCollisionRecs(
-                GetCollisionRec(scene.dino.pos, statics.collisionOffset),
-                GetCollisionRec(scene.obstacles[0].pos, statics.collisionOffset),
-            )) {
-                state.* = statics.GameState.gameOver;
-            }
-            try DrawScene(allocator, sprite, state.*, scaleFactor);
-        },
-        statics.GameState.gameOver => {
-            try DrawScene(allocator, sprite, state.*, scaleFactor);
-            DrawGameOver(scaleFactor);
-
-            if (raylib.IsKeyDown(raylib.KEY_SPACE)) {
-                state.* = statics.GameState.running;
-                scene.Init();
-            }
-        },
-    }
-}
-
-fn GetCollisionRec(rect: raylib.Rectangle, offset: f32) raylib.Rectangle {
-    return raylib.Rectangle{
-        .x = rect.x + offset,
-        .y = rect.y + offset,
-        .width = rect.width - 2 * offset,
-        .height = rect.height - 2 * offset,
-    };
-}
-
-fn DrawMenu(sprite: *raylib.Texture2D, scaleFactor: f32) void {
+pub fn DrawMenu(sprite: *raylib.Texture2D, scaleFactor: f32) void {
     const destination = raylib.Rectangle{
-        .x = scene.dino.pos.x,
-        .y = scene.dino.pos.y,
+        .x = statics.desiredWidth / 12,
+        .y = 0,
         .width = statics.dino.menuIcon.width,
         .height = statics.dino.menuIcon.height,
     };
@@ -70,15 +21,19 @@ fn DrawMenu(sprite: *raylib.Texture2D, scaleFactor: f32) void {
     );
     raylib.DrawText(
         "Press space to play",
-        @intFromFloat(scene.dino.pos.x * scaleFactor),
+        @intFromFloat(statics.desiredWidth * scaleFactor / 12),
         @intFromFloat(statics.groundY * scaleFactor),
         30,
         raylib.BLACK,
     );
 }
 
-fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, state: statics.GameState, scaleFactor: f32) !void {
-    for (scene.groundLines) |line| {
+pub fn DrawScene(scene: *const Scene, sprite: *raylib.Texture2D, scaleFactor: f32, animation_boolean: bool, generation: ?u32, alive: u32) void {
+    var buffer: [100]u8 = undefined;
+    var fba = std.heap.FixedBufferAllocator.init(&buffer);
+    const allocator = fba.allocator();
+
+    for (scene.ground_lines) |line| {
         const groundLineDestination = raylib.Rectangle{
             .x = line.x,
             .y = line.y,
@@ -95,7 +50,7 @@ fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, sta
     }
 
     for (scene.obstacles) |obstacle| {
-        const obstacleSpriteRect = GetObstacleSpriteRectangle(obstacle.type);
+        const obstacleSpriteRect = statics.getObstacleSpriteRectangle(obstacle.type, animation_boolean);
 
         DrawTexture(
             sprite,
@@ -105,22 +60,21 @@ fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, sta
         );
     }
 
-    const dinoSprite = GetDinoSpriteRectangle(state);
-    scene.dino.pos.width = dinoSprite.width;
-    scene.dino.pos.height = dinoSprite.height;
+    for (scene.dinos) |dino| {
+        if (dino.pos.x < -dino.pos.width) continue;
+        DrawTexture(
+            sprite,
+            statics.getDinoSpriteRectangle(dino.alive, dino.isJumping, dino.isCrouching, animation_boolean),
+            dino.pos,
+            scaleFactor,
+        );
+    }
 
-    DrawTexture(
-        sprite,
-        dinoSprite,
-        scene.dino.pos,
-        scaleFactor,
-    );
-
-    const text = try std.fmt.allocPrintZ(
-        allocator.*,
+    const text = std.fmt.allocPrintZ(
+        allocator,
         "Points: {d}",
-        .{@as(u32, @intFromFloat(scene.dino.points))},
-    );
+        .{@as(u32, @intFromFloat(scene.points))},
+    ) catch "Points: ???";
     defer allocator.free(text);
 
     raylib.DrawText(
@@ -130,9 +84,41 @@ fn DrawScene(allocator: *const std.mem.Allocator, sprite: *raylib.Texture2D, sta
         25,
         raylib.BLACK,
     );
+
+    if (generation == null) return;
+
+    const generation_text = std.fmt.allocPrintZ(
+        allocator,
+        "Generation: {d}",
+        .{generation.?},
+    ) catch "Generation: ???";
+    defer allocator.free(text);
+
+    raylib.DrawText(
+        @as([*:0]const u8, generation_text),
+        @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
+        @intFromFloat(statics.desiredHeight * scaleFactor * 0.2),
+        25,
+        raylib.BLACK,
+    );
+
+    const alive_text = std.fmt.allocPrintZ(
+        allocator,
+        "Alive: {d}",
+        .{alive},
+    ) catch "Generation: ???";
+    defer allocator.free(text);
+
+    raylib.DrawText(
+        @as([*:0]const u8, alive_text),
+        @intFromFloat(statics.desiredWidth * scaleFactor * 0.95),
+        @intFromFloat(statics.desiredHeight * scaleFactor * 0.3),
+        25,
+        raylib.BLACK,
+    );
 }
 
-fn DrawGameOver(scaleFactor: f32) void {
+pub fn DrawGameOver(scaleFactor: f32) void {
     raylib.DrawText(
         "Game Over",
         @intFromFloat(statics.desiredWidth * scaleFactor / 2),
@@ -147,124 +133,6 @@ fn DrawGameOver(scaleFactor: f32) void {
         18,
         raylib.BLACK,
     );
-}
-
-fn UpdateScene(deltaTime: f32) void {
-    if (raylib.IsKeyDown(raylib.KEY_DOWN)) {
-        scene.dino.isCrouching = true;
-    } else {
-        scene.dino.isCrouching = false;
-        if (raylib.IsKeyDown(raylib.KEY_SPACE) or raylib.IsKeyDown(raylib.KEY_UP)) {
-            scene.dino.wantToJump = true;
-        } else {
-            scene.dino.wantToJump = false;
-        }
-    }
-
-    for (&scene.groundLines) |*line| {
-        line.x -= statics.dinoVelocity * deltaTime;
-    }
-
-    for (&scene.obstacles) |*obstacle| {
-        obstacle.pos.x -= statics.dinoVelocity * deltaTime;
-    }
-
-    if (scene.obstacles[0].pos.x + GetObstacleSpriteRectangle(scene.obstacles[0].type).width <= 0) {
-        scene.obstacles[0] = scene.obstacles[1];
-        scene.obstacles[1] = scene.obstacles[2];
-
-        const newObstacleType: statics.ObstacleType = @enumFromInt(scene.rand.random().int(u32) % @typeInfo(statics.ObstacleType).Enum.fields.len);
-        const newObstacleSprite: raylib.Rectangle = GetObstacleSpriteRectangle(newObstacleType);
-        var newObstacleY: f32 = 0;
-        if (newObstacleType == statics.ObstacleType.Pterodactyl) {
-            newObstacleY = statics.pterodactylHeights[scene.rand.random().int(u32) % statics.pterodactylHeights.len];
-        }
-        scene.obstacles[2] = scene.Obstacle{
-            .pos = raylib.Rectangle{ .x = scene.obstacles[1].pos.x + statics.dinoVelocity, .y = newObstacleY, .width = newObstacleSprite.width, .height = newObstacleSprite.height },
-            .type = newObstacleType,
-        };
-    }
-
-    const lineWidth = statics.groundTexture.width;
-    if (scene.groundLines[0].x <= -lineWidth) {
-        scene.groundLines[0].x = scene.groundLines[1].x;
-        scene.groundLines[1].x = scene.groundLines[1].x + lineWidth;
-    }
-
-    // Jumping logic
-    if (scene.dino.wantToJump and !scene.dino.isJumping) {
-        scene.dino.velocityUp = std.math.sqrt(2 * statics.gravityForce * statics.dinoJumpHeight);
-        scene.dino.isJumping = true;
-    }
-
-    scene.dino.velocityUp -= statics.gravityForce * deltaTime;
-    if (scene.dino.isCrouching) {
-        scene.dino.velocityUp -= statics.gravityForce * deltaTime;
-    }
-    scene.dino.pos.y += scene.dino.velocityUp * deltaTime;
-
-    // End jump
-    if (scene.dino.pos.y < 0) {
-        scene.dino.pos.y = 0;
-        scene.dino.velocityUp = 0;
-        scene.dino.isJumping = false;
-    }
-
-    scene.dino.points += deltaTime * 10.0;
-}
-
-fn GetObstacleSpriteRectangle(obstacleType: statics.ObstacleType) raylib.Rectangle {
-    switch (obstacleType) {
-        statics.ObstacleType.CactusShortSingle => {
-            return statics.cactus.shortSingle;
-        },
-        statics.ObstacleType.CactusShortDouble => {
-            return statics.cactus.shortDouble;
-        },
-        statics.ObstacleType.CactusShortTriple => {
-            return statics.cactus.shortTriple;
-        },
-        statics.ObstacleType.CactusHighSingle => {
-            return statics.cactus.highSingle;
-        },
-        statics.ObstacleType.CactusHighDouble => {
-            return statics.cactus.highDouble;
-        },
-        statics.ObstacleType.CactusHighTriple => {
-            return statics.cactus.highTriple;
-        },
-        statics.ObstacleType.Pterodactyl => {
-            if (animationBoolean) {
-                return statics.pterodactyl.wingsDown;
-            } else {
-                return statics.pterodactyl.wingsUp;
-            }
-        },
-    }
-}
-
-fn GetDinoSpriteRectangle(state: statics.GameState) raylib.Rectangle {
-    if (state == statics.GameState.gameOver) {
-        return statics.dino.dead;
-    } else if (scene.dino.isJumping) {
-        if (scene.dino.isCrouching) {
-            return statics.dino.crouchLeftStep;
-        } else {
-            return statics.dino.standing;
-        }
-    } else if (scene.dino.isCrouching) {
-        if (animationBoolean) {
-            return statics.dino.crouchLeftStep;
-        } else {
-            return statics.dino.crouchRightStep;
-        }
-    } else {
-        if (animationBoolean) {
-            return statics.dino.leftStep;
-        } else {
-            return statics.dino.rightStep;
-        }
-    }
 }
 
 fn DrawTexture(sprite: *raylib.Texture2D, spriteRect: raylib.Rectangle, destRect: raylib.Rectangle, scaleFactor: f32) void {
@@ -287,7 +155,7 @@ fn DrawTexture(sprite: *raylib.Texture2D, spriteRect: raylib.Rectangle, destRect
     if (drawColissionRectangles and destinationGlobal.width < statics.desiredWidth * scaleFactor) {
         destinationGlobal.y -= destinationGlobal.height;
         raylib.DrawRectangleLinesEx(
-            GetCollisionRec(destinationGlobal, statics.collisionOffset * scaleFactor),
+            scn.getCollisionRec(destinationGlobal, statics.collisionOffset * scaleFactor),
             4,
             raylib.RED,
         );
