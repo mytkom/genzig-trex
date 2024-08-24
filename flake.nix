@@ -26,7 +26,7 @@
                   zellij
                 '';
                 packages = [
-                  zig
+                  zig_0_12
                 ];
                 buildInputs = [
                   libGL
